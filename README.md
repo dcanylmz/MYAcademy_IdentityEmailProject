@@ -14,6 +14,7 @@ Hepsi kendi gelen kutunda ve yalnızca sana ait verilerle.
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)
 ![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?style=flat-square&logo=chartdotjs&logoColor=white)
 
+[Ekran Görüntüleri](#-ekran-görüntüleri) •
 [Özellikler](#-özellikler) •
 [Hızlı Başlangıç](#-hızlı-başlangıç) •
 [Güvenlik](#-güvenlik) •
@@ -30,6 +31,39 @@ Kullanıcılar uygulama içinde birbirlerine mesaj gönderebilir. Uygulamaya kay
 adreslere ise mesajlar **gerçek e-posta (SMTP)** olarak gider.
 
 Tüm veriler SQL Server'da tutulur ve her kullanıcı **yalnızca kendi mesajlarını** görebilir.
+
+---
+
+## 📸 Ekran Görüntüleri
+
+<table>
+<tr>
+<td width="50%" align="center">
+<b>🔑 Giriş Yap</b><br><br>
+<img src="docs/screenshots/giris-yap.png" alt="Giriş Yap ekranı" width="100%">
+</td>
+<td width="50%" align="center">
+<b>📊 Dashboard</b><br><br>
+<img src="docs/screenshots/dashboard.png" alt="Dashboard ekranı" width="100%">
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+<b>📥 Gelen Kutusu</b><br><br>
+<img src="docs/screenshots/gelen-kutusu.png" alt="Gelen Kutusu ekranı" width="100%">
+</td>
+<td width="50%" align="center">
+<b>✉️ Mesaj Detay</b><br><br>
+<img src="docs/screenshots/mesaj-detay.png" alt="Mesaj Detay ekranı" width="100%">
+</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<b>📝 Yeni Mesaj</b><br><br>
+<img src="docs/screenshots/yeni-mesaj.png" alt="Yeni Mesaj ekranı" width="70%">
+</td>
+</tr>
+</table>
 
 ---
 
@@ -219,6 +253,7 @@ MYAcademy_IdentityEmailProject
 ├── ViewComponents/     Sidebar, Navbar ve tema parçaları
 ├── Views/              Razor sayfaları
 ├── Migrations/         EF Core migration dosyaları
+├── docs/screenshots/   README'deki ekran görüntüleri
 └── wwwroot/            Statik dosyalar ve yüklenen profil fotoğrafları
 ```
 
