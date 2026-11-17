@@ -1,4 +1,4 @@
-﻿@{
+@{
     Layout = null;
 }
 <!DOCTYPE html>
@@ -9,7 +9,7 @@
 <body class="preload"
       data-title="@ViewData["Title"]"
       data-active-menu="@ViewData["ActiveMenu"]"
-      data-inbox-url="@(Url.Action("Index", "Inbox") ?? "/Inbox")">
+      data-inbox-url="@(Url.Action("Inbox", "Message") ?? "/Message/Inbox")">
 
     @await Component.InvokeAsync("_MessageLayoutSidebarComponentPartial")
 
@@ -18,6 +18,20 @@
     <!-- =====================================================================
          DİNAMİK İÇERİK — her View (Inbox/Index.cshtml …) burayı doldurur
          ===================================================================== -->
+    <style>
+        /* Tema butonlarının <a> etiketiyle kullanımı */
+        a.tool-btn, a.btn-soft, a.btn-send, a.btn-compose, a.db-link, a.db-tile, a.db-msg, a.pf-stat { text-decoration: none; }
+        a.btn-compose:hover, a.btn-compose:focus { color: #fff; }
+        a.db-stat { display: block; color: inherit; }
+        a.db-msg { color: inherit; }
+        a.db-tile { color: var(--text); }
+        .mp-next a { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 8px; border-radius: 11px; transition: background .18s; }
+        .mp-next a:hover { background: var(--bg); }
+        .notif-item { text-decoration: none; color: inherit; }
+        .notif-item:hover { background: var(--bg); }
+        .notif-empty { padding: 18px 10px; text-align: center; color: var(--muted); font-size: 13px; }
+    </style>
+
     <main class="app-main page-enter" id="mainContent">
         @RenderBody()
     </main>
@@ -143,6 +157,10 @@
 
             /* --- Başlangıç --- */
             setSidebarCollapsed(readJSON(SIDEBAR_KEY) === true, false);
+
+            // Controller'dan gelen bilgi mesajı (TempData["Toast"])
+            const serverToast = @Json.Serialize(TempData["Toast"]?.ToString());
+            if (serverToast) setTimeout(() => showToast(serverToast, 'bi-check2-circle'), 150);
             requestAnimationFrame(() => requestAnimationFrame(() => body.classList.remove('preload')));
         })();
     </script>

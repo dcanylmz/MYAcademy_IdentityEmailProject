@@ -1,4 +1,4 @@
-﻿@model UserRegisterViewModel
+@model UserRegisterViewModel
 
 @{
     Layout = null;
@@ -31,10 +31,17 @@
                         <h1>Kayıt Ol</h1>
                         <p>Mailora hesabınızı oluşturun ve modern e-posta deneyimine başlayın.</p>
                         <!-- ASP.NET: asp-controller="Account" asp-action="Login" -->
-                        <div class="switch-link">Hesabınız zaten var mı? <a href="#" data-login-link>Giriş Yap</a></div>
+                        <div class="switch-link">Hesabınız zaten var mı? <a asp-controller="Login" asp-action="SignIn">Giriş Yap</a></div>
                     </div>
 
-                    <form method="post">
+                    <style>
+                        .server-alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; margin-bottom: 18px; background: var(--rose); color: var(--danger); font-size: 13.5px; font-weight: 600; line-height: 1.5; }
+                        .server-alert i { font-size: 17px; line-height: 1.3; }
+                        .server-alert ul { margin: 0; padding-left: 16px; }
+                    </style>
+                    <partial name="_AuthErrors" />
+
+                    <form method="post" id="registerForm" asp-controller="Register" asp-action="SignUp" novalidate>
 
                         <div class="form-grid">
 
@@ -111,7 +118,7 @@
 
                             <div class="span-2">
                                 <div class="terms" id="termsBox">
-                                    <input type="checkbox" class="m-check" id="acceptTerms" name="AcceptTerms" aria-describedby="termsMsg">
+                                    <input type="checkbox" class="m-check" id="acceptTerms" name="AcceptTerms" value="true" checked="@Model.AcceptTerms" aria-describedby="termsMsg">
                                     <label for="acceptTerms">
                                         <button type="button" class="linkish" data-open-kvkk>KVKK ve kullanıcı sözleşmesini</button> okudum, kabul ediyorum.
                                     </label>
@@ -125,7 +132,7 @@
                         </button>
 
                         <div class="secure-note"><i class="bi bi-shield-check"></i> Bilgileriniz şifrelenerek güvenle saklanır.</div>
-                        <div class="form-foot">Hesabınız zaten var mı? <a href="#" data-login-link>Giriş Yap</a></div>
+                        <div class="form-foot">Hesabınız zaten var mı? <a asp-controller="Login" asp-action="SignIn">Giriş Yap</a></div>
                     </form>
                 </div>
             </section>

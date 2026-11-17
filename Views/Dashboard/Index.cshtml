@@ -1,0 +1,299 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["ActiveMenu"] = "dashboard";
+    Layout = "~/Views/MessageLayout/Index.cshtml";
+
+    var hour = DateTime.Now.Hour;
+    var greeting = hour < 6 ? "İyi geceler" : hour < 12 ? "Günaydın" : hour < 18 ? "İyi günler" : "İyi akşamlar";
+    var todayText = DateTime.Today.ToString("dddd, d MMMM yyyy", UiHelpers.Tr);
+    var distTotal = Model.Distribution.Sum(d => d.Value);
+    var maxContact = Math.Max(1, Model.TopContacts.Select(c => c.Total).DefaultIfEmpty(0).Max());
+    int Pct(int part, int whole) => whole == 0 ? 0 : (int)Math.Round(part * 100.0 / whole);
+}
+
+<section class="dashboard" id="dashboard">
+
+    <!-- Karşılama -->
+    <div class="db-welcome">
+        <div class="db-welcome-text">
+            <span class="db-date"><i class="bi bi-calendar3"></i> @todayText</span>
+            <h1>@greeting, <span>@Model.FirstName</span>! <span class="wave">👋</span></h1>
+            <p>E-posta hesabında neler olduğunu birlikte inceleyelim.</p>
+            <div class="db-welcome-row">
+                <a class="btn-send" asp-controller="Message" asp-action="CreateMessage"><span class="lbl"><i class="bi bi-pencil-square"></i> Yeni Mesaj Oluştur</span></a>
+                <span class="db-chip"><i class="bi bi-envelope-arrow-down"></i> Bugün <b>@Model.TodayReceived</b> yeni mesaj</span>
+                @if (Model.Unread > 0)
+                {
+                    <a class="db-chip warn" asp-controller="Message" asp-action="Inbox" asp-route-filter="unread" style="text-decoration:none"><i class="bi bi-exclamation-circle"></i> <b>@Model.Unread</b> okunmamış mesaj bekliyor</a>
+                }
+                else
+                {
+                    <span class="db-chip ok"><i class="bi bi-check2-circle"></i> Tüm mesajlar okundu</span>
+                }
+            </div>
+        </div>
+        <div class="db-illus" aria-hidden="true">
+            <span class="plane"><i class="bi bi-send-fill"></i></span>
+            <span class="bubble b1"></span><span class="bubble b2"></span><span class="bubble b3"></span>
+            <div class="env">
+                <div class="letter"><i></i><i></i><i></i></div>
+                <div class="env-front"></div>
+                @if (Model.Unread > 0)
+                {
+                    <span class="env-badge">@Model.Unread</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- İstatistik kartları -->
+    <div class="db-stats">
+        <a class="db-stat t-blue" asp-controller="Message" asp-action="Inbox" style="text-decoration:none;color:inherit">
+            <div class="top"><span class="ic"><i class="bi bi-inbox-fill"></i></span><span class="trend">Bugün +@Model.TodayReceived</span></div>
+            <div class="num">@Model.Received</div>
+            <div class="lbl">Gelen Mesajlar</div>
+            <div class="desc"><span>Gelen kutunuzdaki tüm mesajlar</span><i class="bi bi-arrow-right"></i></div>
+        </a>
+        <a class="db-stat t-lav" asp-controller="Message" asp-action="Sendbox" style="text-decoration:none;color:inherit">
+            <div class="top"><span class="ic"><i class="bi bi-send-fill"></i></span><span class="trend">7 gün: @Model.WeekSent</span></div>
+            <div class="num">@Model.Sent</div>
+            <div class="lbl">Gönderilen Mesajlar</div>
+            <div class="desc"><span>Bu hafta @Model.WeekSent mesaj</span><i class="bi bi-arrow-right"></i></div>
+        </a>
+        <a class="db-stat t-mint" asp-controller="Message" asp-action="Inbox" asp-route-filter="unread" style="text-decoration:none;color:inherit">
+            <div class="top"><span class="ic"><i class="bi bi-envelope-fill"></i></span><span class="trend">Kutunun %@Pct(Model.Unread, Model.Received)'i</span></div>
+            <div class="num">@Model.Unread</div>
+            <div class="lbl">Okunmamış Mesajlar</div>
+            <div class="desc"><span>Gelen kutunuzda bekliyor</span><i class="bi bi-arrow-right"></i></div>
+        </a>
+        <a class="db-stat t-peach" asp-controller="Message" asp-action="Starred" style="text-decoration:none;color:inherit">
+            <div class="top"><span class="ic"><i class="bi bi-star-fill"></i></span><span class="trend">Önemli</span></div>
+            <div class="num">@Model.Starred</div>
+            <div class="lbl">Yıldızlı Mesajlar</div>
+            <div class="desc"><span>@(Model.StarredUnread > 0 ? $"{Model.StarredUnread} tanesi henüz okunmadı" : "Tamamı okundu")</span><i class="bi bi-arrow-right"></i></div>
+        </a>
+    </div>
+
+    <!-- Grafikler -->
+    <div class="db-row charts">
+        <div class="db-card db-traffic">
+            <div class="db-card-head">
+                <div>
+                    <h3>Mesaj Trafiği</h3>
+                    <p>Gelen ve gönderilen mesajlarınızın günlük dağılımı.</p>
+                </div>
+                <div class="db-seg" role="tablist" aria-label="Zaman aralığı">
+                    <button type="button" role="tab" data-range="7" class="active" aria-selected="true">Son 7 Gün</button>
+                    <button type="button" role="tab" data-range="30" aria-selected="false">Son 30 Gün</button>
+                    <button type="button" role="tab" data-range="90" aria-selected="false">Son 90 Gün</button>
+                </div>
+            </div>
+            <div class="db-legend">
+                <button type="button" class="db-legend-item" data-ds="0"><span class="sw" style="background:#8B7FD6"></span>Gelen Mesajlar <b id="dbLegInc">0</b></button>
+                <button type="button" class="db-legend-item" data-ds="1"><span class="sw" style="background:#6FA8E8"></span>Gönderilen Mesajlar <b id="dbLegSent">0</b></button>
+            </div>
+            <div class="db-chart-box"><canvas id="dbTraffic" aria-label="Mesaj trafiği grafiği" role="img"></canvas></div>
+        </div>
+
+        <div class="db-card db-dist">
+            <div class="db-card-head">
+                <div><h3>Kategori Dağılımı</h3><p>Gelen ve gönderilen mesajların kategorileri</p></div>
+            </div>
+            <div class="db-dist-body">
+                <div class="db-donut-box">
+                    <canvas id="dbDonut" aria-label="Kategori dağılımı grafiği" role="img"></canvas>
+                    <div class="db-donut-center"><div><b>@distTotal</b><span>Toplam mesaj</span></div></div>
+                </div>
+                <ul class="db-dist-list">
+                    @foreach (var d in Model.Distribution)
+                    {
+                        <li><span class="db-dot" style="background:@d.Color"></span>@d.Label <span class="c">@d.Value</span><span class="p">%@Pct(d.Value, distTotal)</span></li>
+                    }
+                    @if (!Model.Distribution.Any())
+                    {
+                        <li style="color:var(--muted)">Henüz mesaj yok</li>
+                    }
+                </ul>
+            </div>
+            <div class="db-starred-note">
+                <i class="bi bi-star-fill"></i>
+                <span><b>@Model.Starred</b> yıldızlı mesaj · <b>@Model.Drafts</b> taslak · <b>@Model.Trash</b> çöp kutusunda</span>
+                <a class="link-btn" asp-controller="Message" asp-action="Starred">Görüntüle</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alt bölüm -->
+    <div class="db-row bottom">
+        <!-- Son gelen mesajlar -->
+        <div class="db-card db-recent">
+            <div class="db-card-head">
+                <div><h3>Son Gelen Mesajlar</h3><p>Gelen kutunuzdaki en yeni 5 mesaj</p></div>
+                <a class="db-link" asp-controller="Message" asp-action="Inbox">Tümünü Gör <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="db-msgs">
+                @foreach (var m in Model.RecentMessages)
+                {
+                    <a class="db-msg @(m.IsUnread ? "unread" : "")" href="@m.Url" style="color:inherit">
+                        @UiHelpers.Avatar(m.CounterpartName, m.CounterpartImage, m.CounterpartEmail)
+                        <span class="bd">
+                            <span class="nm">@(m.CounterpartName)@if (m.IsUnread){<span class="unread-dot" title="Okunmamış"></span>}</span>
+                            <span class="sj d-block">@m.Subject</span>
+                            <span class="sn d-block">@m.Snippet</span>
+                        </span>
+                        <span class="tm">@UiHelpers.ShortTime(m.Date)</span>
+                    </a>
+                }
+                @if (!Model.RecentMessages.Any())
+                {
+                    <div class="empty-list"><h6>Gelen kutunuz boş</h6></div>
+                }
+            </div>
+        </div>
+
+        <!-- En sık iletişim kurulanlar -->
+        <div class="db-card db-contacts">
+            <div class="db-card-head">
+                <div><h3>En Sık İletişim Kurulanlar</h3><p>Son 90 gündeki mesajlaşmalar</p></div>
+            </div>
+            @foreach (var c in Model.TopContacts)
+            {
+                <div class="db-contact">
+                    @UiHelpers.Avatar(c.Name, c.ImageUrl, c.Email)
+                    <div class="bd">
+                        <div class="nm">@c.Name</div>
+                        <div class="em">@c.Email</div>
+                        <div class="bar"><span style="width:@Pct(c.Total, maxContact)%"></span></div>
+                    </div>
+                    <div class="cnt">@c.Total<small>mesaj</small></div>
+                    <a class="db-send" asp-controller="Message" asp-action="CreateMessage" asp-route-to="@c.Email" title="@c.Name kişisine mesaj gönder" aria-label="@c.Name kişisine mesaj gönder" style="display:grid;place-items:center;text-decoration:none"><i class="bi bi-send"></i></a>
+                </div>
+            }
+            @if (!Model.TopContacts.Any())
+            {
+                <div class="empty-list"><h6>Henüz mesajlaşma yok</h6><div>Mesaj gönderdikçe burada listelenecek.</div></div>
+            }
+        </div>
+
+        <div class="db-side">
+            <!-- Hızlı işlemler -->
+            <div class="db-card">
+                <div class="db-card-head"><div><h3>Hızlı İşlemler</h3></div></div>
+                <div class="db-quick-grid">
+                    <a class="db-tile t-lav" asp-controller="Message" asp-action="CreateMessage"><i class="bi bi-pencil-square"></i><span>Yeni Mesaj<small>Mesaj oluştur</small></span></a>
+                    <a class="db-tile t-blue" asp-controller="Message" asp-action="Inbox"><i class="bi bi-inbox"></i><span>Gelen Kutusu<small>@Model.Unread okunmamış</small></span></a>
+                    <a class="db-tile t-mint" asp-controller="Message" asp-action="Drafts"><i class="bi bi-file-earmark-text"></i><span>Taslaklar<small>@Model.Drafts taslak</small></span></a>
+                    <a class="db-tile t-peach" asp-controller="Profile" asp-action="Index"><i class="bi bi-person-gear"></i><span>Profilim<small>Bilgileri düzenle</small></span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script>
+        (() => {
+            const { $, $$ } = window.Mailora;
+
+            // Controller'dan gelen gerçek veriler
+            const TRAFFIC = {
+                labels: @Json.Serialize(Model.TrafficLabels),
+                inc: @Json.Serialize(Model.TrafficIncoming),
+                sent: @Json.Serialize(Model.TrafficSent)
+            };
+            const DIST = @Json.Serialize(Model.Distribution);
+
+            let range = 7, traffic = null;
+            const slice = (arr) => arr.slice(-range);
+            const sum = arr => arr.reduce((a, b) => a + b, 0);
+
+            function fallback(canvas) {
+                if (canvas && canvas.parentElement)
+                    canvas.parentElement.innerHTML = '<div class="db-chart-empty"><div><i class="bi bi-graph-up"></i>Grafik kütüphanesi yüklenemedi.<br>İnternet bağlantınızı kontrol edin.</div></div>';
+            }
+
+            function updateLegend() {
+                $('#dbLegInc').textContent = sum(slice(TRAFFIC.inc));
+                $('#dbLegSent').textContent = sum(slice(TRAFFIC.sent));
+            }
+
+            const tooltip = {
+                backgroundColor: '#2E3045', titleColor: '#fff', bodyColor: '#E4E1F5',
+                padding: 12, cornerRadius: 10, boxPadding: 5, usePointStyle: true,
+                titleFont: { weight: '700', size: 12.5 }, bodyFont: { size: 12.5 }
+            };
+            const softFill = hex => ctx => {
+                const { chart } = ctx, { ctx: g, chartArea } = chart;
+                if (!chartArea) return 'transparent';
+                const gr = g.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                gr.addColorStop(0, hex + '40');
+                gr.addColorStop(1, hex + '00');
+                return gr;
+            };
+            const line = (label, data, color) => ({
+                label, data, borderColor: color, backgroundColor: softFill(color), fill: true, tension: .4, borderWidth: 2.5,
+                pointRadius: range === 7 ? 4 : 0, pointHoverRadius: 6,
+                pointBackgroundColor: '#fff', pointBorderColor: color, pointBorderWidth: 2,
+                pointHoverBackgroundColor: color, pointHoverBorderColor: '#fff'
+            });
+
+            function buildTraffic() {
+                const canvas = $('#dbTraffic');
+                if (typeof Chart === 'undefined') { fallback(canvas); updateLegend(); return; }
+                if (traffic) traffic.destroy();
+                traffic = new Chart(canvas, {
+                    type: 'line',
+                    data: { labels: slice(TRAFFIC.labels), datasets: [line('Gelen Mesajlar', slice(TRAFFIC.inc), '#8B7FD6'), line('Gönderilen Mesajlar', slice(TRAFFIC.sent), '#6FA8E8')] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y}` } } },
+                        scales: {
+                            x: { grid: { display: false }, border: { display: false }, ticks: { color: '#A6A9B8', maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 11.5 } } },
+                            y: { beginAtZero: true, grid: { color: '#F1F0F8' }, border: { display: false }, ticks: { color: '#A6A9B8', padding: 10, maxTicksLimit: 5, precision: 0, font: { size: 11.5 } } }
+                        }
+                    }
+                });
+                $$('[data-ds]').forEach(b => b.classList.remove('off'));
+                updateLegend();
+            }
+
+            function buildDonut() {
+                const canvas = $('#dbDonut');
+                if (typeof Chart === 'undefined') { fallback(canvas); return; }
+                const data = DIST.length ? DIST : [{ label: 'Mesaj yok', color: '#ECEBF5', value: 1 }];
+                new Chart(canvas, {
+                    type: 'doughnut',
+                    data: { labels: data.map(d => d.label), datasets: [{ data: data.map(d => d.value), backgroundColor: data.map(d => d.color), borderWidth: 0, borderRadius: 6, spacing: 3, hoverOffset: 6 }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { ...tooltip, enabled: DIST.length > 0 } } }
+                });
+            }
+
+            if (typeof Chart !== 'undefined') {
+                Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, sans-serif";
+                Chart.defaults.color = '#85899B';
+            }
+
+            // Zaman aralığı (7 / 30 / 90 gün)
+            $$('[data-range]').forEach(b => b.addEventListener('click', () => {
+                range = +b.dataset.range;
+                $$('[data-range]').forEach(x => { const on = x === b; x.classList.toggle('active', on); x.setAttribute('aria-selected', on); });
+                buildTraffic();
+            }));
+
+            // Legend: seriyi gizle / göster
+            $$('[data-ds]').forEach(b => b.addEventListener('click', () => {
+                if (!traffic) return;
+                const i = +b.dataset.ds, visible = traffic.isDatasetVisible(i);
+                traffic.setDatasetVisibility(i, !visible);
+                b.classList.toggle('off', visible);
+                traffic.update();
+            }));
+
+            buildTraffic();
+            buildDonut();
+        })();
+    </script>
+}

@@ -1,0 +1,98 @@
+@model ConfirmMailViewModel
+@{
+    ViewData["Title"] = "Email Doğrulama";
+    Layout = "~/Views/Shared/_AuthLayout.cshtml";
+}
+
+<div class="center-ic"><i class="bi bi-envelope-check"></i></div>
+<div class="form-head">
+    <h1>Email adresinizi doğrulayın</h1>
+    <p>
+        @if (!string.IsNullOrEmpty(Model.Email))
+        {
+            <span><b>@Model.Email</b> adresine gönderdiğimiz 6 haneli kodu girin.</span>
+        }
+        else
+        {
+            <text>Kayıt olurken kullandığınız email adresini ve size gönderilen 6 haneli kodu girin.</text>
+        }
+    </p>
+</div>
+
+<partial name="_AuthErrors" />
+
+<form method="post" asp-controller="Register" asp-action="ConfirmMail" id="confirmForm" data-loading="Doğrulanıyor…" novalidate>
+    @if (string.IsNullOrEmpty(Model.Email))
+    {
+        <div class="field">
+            <label for="confirmEmail">Email <span class="req">*</span></label>
+            <div class="input-wrap">
+                <i class="bi bi-envelope lead"></i>
+                <input class="a-input" id="confirmEmail" asp-for="Email" type="email" placeholder="ad.soyad@ornek.com" autocomplete="email">
+            </div>
+        </div>
+    }
+    else
+    {
+        <input type="hidden" asp-for="Email">
+    }
+
+    <div class="field">
+        <label>Doğrulama Kodu <span class="req">*</span></label>
+        <div class="code-inputs" id="codeInputs">
+            @for (var i = 0; i < 6; i++)
+            {
+                <input type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="@(i + 1). hane">
+            }
+        </div>
+        <input type="hidden" asp-for="Code" id="codeValue">
+    </div>
+
+    <button type="submit" class="btn-primary-x">
+        <span class="lbl">Hesabımı Doğrula</span><i class="bi bi-arrow-right"></i>
+    </button>
+</form>
+
+<form method="post" asp-controller="Register" asp-action="ResendCode" class="form-foot">
+    <input type="hidden" name="email" value="@Model.Email">
+    Kod gelmedi mi? <button type="submit" class="linkbtn">Kodu tekrar gönder</button>
+</form>
+<div class="form-foot" style="margin-top:6px">Zaten doğruladınız mı? <a asp-controller="Login" asp-action="SignIn">Giriş Yap</a></div>
+
+@section Scripts {
+    <script>
+        // 6 kutucuklu kod girişi: otomatik ilerleme, geri silme ve yapıştırma desteği
+        (() => {
+            const boxes = $$('#codeInputs input');
+            const hidden = $('#codeValue');
+            const sync = () => { hidden.value = boxes.map(b => b.value).join(''); };
+
+            (hidden.value || '').split('').slice(0, 6).forEach((c, i) => boxes[i].value = c);
+
+            boxes.forEach((box, i) => {
+                box.addEventListener('input', () => {
+                    box.value = box.value.replace(/\D/g, '').slice(-1);
+                    if (box.value && i < 5) boxes[i + 1].focus();
+                    sync();
+                    if (hidden.value.length === 6) $('#confirmForm').requestSubmit();
+                });
+                box.addEventListener('keydown', e => {
+                    if (e.key === 'Backspace' && !box.value && i > 0) boxes[i - 1].focus();
+                    if (e.key === 'ArrowLeft' && i > 0) boxes[i - 1].focus();
+                    if (e.key === 'ArrowRight' && i < 5) boxes[i + 1].focus();
+                });
+                box.addEventListener('paste', e => {
+                    const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                    if (!digits) return;
+                    e.preventDefault();
+                    digits.split('').forEach((d, j) => boxes[j].value = d);
+                    boxes[Math.min(digits.length, 5)].focus();
+                    sync();
+                });
+            });
+
+            const emailInput = $('#confirmEmail');
+            (emailInput && !emailInput.value ? emailInput : boxes.find(b => !b.value) || boxes[5]).focus();
+        })();
+    </script>
+}

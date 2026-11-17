@@ -1,12 +1,36 @@
-﻿namespace MYAcademy_IdentityEmailProject.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace MYAcademy_IdentityEmailProject.Models
 {
     public class UserRegisterViewModel
     {
-        public string Name { get; set; }
-        public string Surname { get; set; }
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string Password { get; set; }
-        public string PasswordConfirm { get; set; }
+        [Required(ErrorMessage = "Ad alanı zorunludur.")]
+        [StringLength(50, MinimumLength = 2, ErrorMessage = "Ad 2-50 karakter olmalıdır.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Soyad alanı zorunludur.")]
+        [StringLength(50, MinimumLength = 2, ErrorMessage = "Soyad 2-50 karakter olmalıdır.")]
+        public string Surname { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Kullanıcı adı zorunludur.")]
+        [StringLength(30, MinimumLength = 3, ErrorMessage = "Kullanıcı adı 3-30 karakter olmalıdır.")]
+        [RegularExpression(@"^[a-zA-Z0-9._-]+$", ErrorMessage = "Kullanıcı adında Türkçe karakter, boşluk veya özel simge kullanılamaz.")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email alanı zorunludur.")]
+        [EmailAddress(ErrorMessage = "Geçerli bir email adresi girin.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Şifre alanı zorunludur.")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Şifre tekrarı zorunludur.")]
+        [Compare(nameof(Password), ErrorMessage = "Şifreler eşleşmiyor.")]
+        [DataType(DataType.Password)]
+        public string PasswordConfirm { get; set; } = string.Empty;
+
+        [Range(typeof(bool), "true", "true", ErrorMessage = "KVKK ve kullanıcı sözleşmesini kabul etmelisiniz.")]
+        public bool AcceptTerms { get; set; }
     }
 }

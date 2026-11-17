@@ -1,17 +1,25 @@
-﻿@model MYAcademy_IdentityEmailProject.Entities.Message
+@model ComposeMessageViewModel
 
-@using System.Security.Claims
 @using Microsoft.AspNetCore.Mvc.Rendering
 @{
-    ViewData["Title"] = "Yeni Mesaj";
-    ViewData["ActiveMenu"] = "compose";        // Sidebar'daki data-page="compose" / data-menu="compose" linkini aktif yapar
+    var (pageTitle, pageDesc) = Model.Mode switch
+    {
+        "reply" => ("Yanıtla", "Mesaja yanıtınızı yazın ve gönderin"),
+        "forward" => ("Mesajı İlet", "Mesajı başka bir adrese iletin"),
+        "draft" => ("Taslağı Düzenle", "Kaydettiğiniz taslağı tamamlayıp gönderin"),
+        _ => ("Yeni Mesaj", "Yeni bir e-posta oluşturun ve gönderin")
+    };
+    ViewData["Title"] = pageTitle;
+    ViewData["ActiveMenu"] = Model.Mode == "draft" ? "drafts" : "compose";
     Layout = "~/Views/MessageLayout/Index.cshtml";
 
-    // Controller'da: ViewBag.Categories = List<SelectListItem>
+    // Controller'da: ViewBag.Categories = SelectList (veritabanındaki kategoriler)
     var categories = ViewBag.Categories as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
 
-    var userName = User.FindFirstValue(ClaimTypes.GivenName) ?? User.Identity?.Name ?? "";
-    var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "";
+    // Gönderen bilgisi Identity hesabından gelir (formdan alınmaz)
+    var userName = ViewBag.UserFullName as string ?? User.Identity?.Name ?? "";
+    var userEmail = ViewBag.UserEmail as string ?? "";
+    var userImage = ViewBag.UserImage as string;
 
     // Sunucu tarafı (ModelState) hataları
     string ErrClass(string key) => ViewData.ModelState.TryGetValue(key, out var e) && e.Errors.Count > 0 ? "has-error" : "";
@@ -78,22 +86,25 @@
 
     <div class="cmp-head">
         <div>
-            <h1>Yeni Mesaj</h1>
-            <p>Yeni bir e-posta oluşturun ve gönderin</p>
+            <h1>@pageTitle</h1>
+            <p>@pageDesc</p>
         </div>
         <div class="cmp-status" id="cmpStatus" data-state="empty" aria-live="polite">
             <span class="sdot"></span><span class="stext">Yeni mesaj</span>
         </div>
     </div>
 
-    @* Controller adınız farklıysa asp-controller ekleyin: asp-controller="Message" *@
-    <form class="cmp-card" id="cmpForm" asp-action="Create" method="post" novalidate autocomplete="off">
+    <form class="cmp-card" id="cmpForm" asp-controller="Message" asp-action="CreateMessage" method="post" novalidate autocomplete="off">
+        <input type="hidden" asp-for="MessageID">
+        <input type="hidden" asp-for="ParentMessageID">
+        <input type="hidden" asp-for="Mode">
 
         <!-- Alıcı, kategori & konu -->
         <div class="cmp-fields">
             <div class="cmp-row">
                 <span class="cmp-label">Kimden</span>
                 <div class="cmp-from">
+                    @UiHelpers.Avatar(userName, userImage, userEmail, "xs")
                     <b>@userName</b>
                     @if (!string.IsNullOrEmpty(userEmail))
                     {
@@ -197,7 +208,8 @@
 
         <!-- Alt işlem çubuğu -->
         <div class="cmp-actions">
-            <button type="submit" class="btn-send" id="cmpSend"><span class="lbl"><i class="bi bi-send-fill"></i> Mesajı Gönder</span></button>
+            <button type="submit" class="btn-send" id="cmpSend" name="submitAction" value="send"><span class="lbl"><i class="bi bi-send-fill"></i> Mesajı Gönder</span></button>
+            <button type="submit" class="btn-soft" id="cmpDraft" name="submitAction" value="draft" formnovalidate><i class="bi bi-file-earmark-text"></i> Taslak Olarak Kaydet</button>
             <button type="button" class="btn-soft danger" id="cmpClear"><i class="bi bi-x-circle"></i> Temizle</button>
             <span class="cmp-hint"><span class="kbd-s">Ctrl</span> + <span class="kbd-s">Enter</span> ile gönder</span>
         </div>
@@ -221,7 +233,8 @@
 @section Scripts {
     <script>
         /* ======================================================================
-           YENİ MESAJ — form normal POST ile gönderilir (asp-action="Create").
+           YENİ MESAJ — form normal POST ile gönderilir (MessageController.CreateMessage).
+           "Taslak Olarak Kaydet" butonu submitAction=draft gönderir; taslakta doğrulama yapılmaz.
            JS: zengin metin editörü, istemci doğrulaması, Ctrl+Enter, temizle onayı.
            ====================================================================== */
         (() => {
@@ -271,7 +284,7 @@
             function updateCounter() {
                 const text = editor.innerText.replace(/ /g, ' ').trim();
                 const words = text ? text.split(/\s+/).length : 0;
-                ('#cmpCounter').textContent = `{words.toLocaleString('tr-TR')} kelime · ${text.length.toLocaleString('tr-TR')} karakter`;
+                $('#cmpCounter').textContent = `${words.toLocaleString('tr-TR')} kelime · ${text.length.toLocaleString('tr-TR')} karakter`;
             }
 
             editor.addEventListener('input', () => { syncContent(); updateCounter(); clearFieldError($('#rowBody')); markDirty(); });
@@ -308,7 +321,7 @@
                 editor.focus(); restoreSelection();
                 const sel = window.getSelection();
                 if (!sel.rangeCount || sel.isCollapsed || !editor.contains(sel.anchorNode)) {
-                    document.execCommand('insertHTML', false, `<a href="escapeHtml(url)">{escapeHtml(raw)}</a>&nbsp;`);
+                    document.execCommand('insertHTML', false, `<a href="${escapeHtml(url)}">${escapeHtml(raw)}</a>&nbsp;`);
                 } else {
                     document.execCommand('createLink', false, url);
                 }
@@ -324,7 +337,7 @@
                 STATE_CMDS.forEach(c => {
                     let on = false;
                     if (inEditor) { try { on = document.queryCommandState(c); } catch (e) { on = false; } }
-                    (`[data-cmd="{c}"]`, tb)?.classList.toggle('active', on);
+                    $(`[data-cmd="${c}"]`, tb)?.classList.toggle('active', on);
                 });
                 let block = '';
                 if (inEditor) { try { block = String(document.queryCommandValue('formatBlock') || '').toLowerCase().replace(/[<>]/g, ''); } catch (e) { block = ''; } }
@@ -332,7 +345,7 @@
             }
 
             function togglePop(name, btn) {
-                const pop = (`[data-pop-for="{name}"]`);
+                const pop = $(`[data-pop-for="${name}"]`);
                 const willOpen = !pop.classList.contains('show');
                 closePops();
                 if (!willOpen) return;
@@ -401,14 +414,24 @@
                 to.value = to.value.trim();
                 syncContent();
                 if (sending) { e.preventDefault(); return; }
-                if (!validate()) { e.preventDefault(); showToast('Lütfen işaretli alanları kontrol edin.', 'bi-exclamation-circle'); return; }
+
+                const isDraft = e.submitter && e.submitter.value === 'draft';
+                if (isDraft) {
+                    const empty = !to.value && !subject.value.trim() && !textOf(editor.innerHTML);
+                    if (empty) { e.preventDefault(); showToast('Boş bir taslak kaydedilemez.', 'bi-info-circle'); return; }
+                } else if (!validate()) {
+                    e.preventDefault(); showToast('Lütfen işaretli alanları kontrol edin.', 'bi-exclamation-circle'); return;
+                }
 
                 sending = true; dirty = false;
-                const btn = $('#cmpSend');
-                btn.disabled = true;
-                $('.lbl', btn).innerHTML = '<span class="spin"></span> Gönderiliyor…';
                 updateStatus();
-                // Form normal şekilde POST edilir → Controller'daki Create(CreateMessageViewModel model)
+                // Butonu devre dışı bırakmadan önce tarayıcının submitAction değerini forma eklemesine izin ver
+                setTimeout(() => {
+                    $('#cmpSend').disabled = true; $('#cmpDraft').disabled = true;
+                    if (isDraft) $('#cmpDraft').innerHTML = '<span class="spin"></span> Kaydediliyor…';
+                    else $('.lbl', $('#cmpSend')).innerHTML = '<span class="spin"></span> Gönderiliyor…';
+                }, 0);
+                // Form normal şekilde POST edilir → MessageController.CreateMessage(ComposeMessageViewModel model, string submitAction)
             });
 
             /* --- Temizle (onaylı) --- */
@@ -438,7 +461,7 @@
             /* --- Kısayollar --- */
             $('#compose').addEventListener('keydown', e => {
                 const mod = e.ctrlKey || e.metaKey;
-                if (mod && e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
+                if (mod && e.key === 'Enter') { e.preventDefault(); form.requestSubmit($('#cmpSend')); }
                 if (e.key === 'Escape') { closePops(); closeClear(); }
             });
 

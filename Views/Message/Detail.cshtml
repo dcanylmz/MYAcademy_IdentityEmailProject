@@ -1,0 +1,229 @@
+@model MessageDetailViewModel
+@{
+    var m = Model.Message;
+    ViewData["Title"] = string.IsNullOrWhiteSpace(m.MessageSubject) ? "Mesaj" : m.MessageSubject;
+    ViewData["ActiveMenu"] = Model.Box;
+    Layout = "~/Views/MessageLayout/Index.cshtml";
+
+    var backUrl = Model.Box switch
+    {
+        MessageBoxes.Sent => Url.Action("Sendbox"),
+        MessageBoxes.Starred => Url.Action("Starred"),
+        MessageBoxes.Trash => Url.Action("Trash"),
+        _ => Url.Action("Inbox")
+    };
+    var hereUrl = Url.Action("Detail", new { id = m.MessageID, box = Model.Box });
+    var replyName = Model.IsOutgoing ? Model.ReceiverName : Model.SenderName;
+    var contactEmail = Model.IsOutgoing ? m.ReceiverEmail : m.SenderEmail;
+    var contactName = Model.IsOutgoing ? Model.ReceiverName : Model.SenderName;
+    var folderLabel = Model.IsInTrash ? "Çöp Kutusu" : Model.IsOutgoing ? "Gönderilenler" : "Gelen Kutusu";
+    var folderIcon = Model.IsInTrash ? "bi-trash3" : Model.IsOutgoing ? "bi-send" : "bi-inbox";
+}
+
+<style>
+    .pv-body blockquote { border-left: 3px solid var(--accent, #8B7FD6); margin: 12px 0; padding: 4px 0 4px 14px; color: var(--muted, #85899B); }
+    .pv-body img { max-width: 100%; height: auto; }
+    .mp-top form, .pv-actions form { display: inline; margin: 0; }
+    @@media print {
+        .app-sidebar, .app-navbar, .mp-top, .mp-side, .pv-actions, .quick-reply { display: none !important; }
+        .app-main { margin: 0 !important; padding: 0 !important; }
+        .mp-grid { display: block !important; }
+    }
+</style>
+
+@* Toolbar butonlarının ortak POST formu (AntiForgery token otomatik eklenir) *@
+<form id="actForm" method="post" asp-antiforgery="true" hidden>
+    <input type="hidden" name="ids" value="@m.MessageID">
+    <input type="hidden" name="id" value="@m.MessageID">
+    <input type="hidden" name="starred" id="actStarred" value="">
+    <input type="hidden" name="returnUrl" id="actReturn" value="">
+</form>
+
+<section class="msg-page" id="msgPage">
+
+    <!-- Üst çubuk: geri dön + mesaj işlemleri -->
+    <div class="mp-top">
+        <a class="btn-soft mp-back" href="@backUrl" title="@Model.BoxTitle'na dön" style="text-decoration:none"><i class="bi bi-arrow-left"></i><span>@Model.BoxTitle</span></a>
+        <div class="mp-toolbar" role="toolbar" aria-label="Mesaj işlemleri">
+            @if (!Model.IsInTrash)
+            {
+                <a class="tool-btn" asp-action="CreateMessage" asp-route-replyTo="@m.MessageID" title="Yanıtla"><i class="bi bi-reply"></i></a>
+                <a class="tool-btn" asp-action="CreateMessage" asp-route-forwardId="@m.MessageID" title="İlet"><i class="bi bi-forward"></i></a>
+                <span class="tb-divider"></span>
+                if (!Model.IsOutgoing)
+                {
+                    <button class="tool-btn" type="button" data-post="@Url.Action("MarkAsUnread")" data-return="@backUrl" title="Okunmadı olarak işaretle"><i class="bi bi-envelope"></i></button>
+                }
+                <button class="tool-btn" type="button" data-post="@Url.Action("MoveToTrash")" data-return="@backUrl" title="Çöp kutusuna taşı"><i class="bi bi-trash3"></i></button>
+            }
+            else
+            {
+                <button class="tool-btn" type="button" data-post="@Url.Action("Restore")" data-return="@backUrl" title="Geri al"><i class="bi bi-arrow-counterclockwise"></i></button>
+                <button class="tool-btn" type="button" data-post="@Url.Action("DeleteForever")" data-return="@backUrl" data-confirm="Bu mesaj kalıcı olarak silinecek. Emin misiniz?" title="Kalıcı olarak sil"><i class="bi bi-x-octagon"></i></button>
+            }
+            <button class="tool-btn hide-xs" type="button" onclick="window.print()" title="Yazdır"><i class="bi bi-printer"></i></button>
+            <span class="tb-divider"></span>
+            <span class="mp-counter">@(Model.Position > 0 ? Model.Position.ToString() : "–") / @Model.Total</span>
+            @if (Model.PrevId.HasValue)
+            {
+                <a class="tool-btn" id="prevMsg" asp-action="Detail" asp-route-id="@Model.PrevId" asp-route-box="@Model.Box" title="Önceki mesaj (k)"><i class="bi bi-chevron-left"></i></a>
+            }
+            else
+            {
+                <button class="tool-btn" type="button" disabled><i class="bi bi-chevron-left"></i></button>
+            }
+            @if (Model.NextId.HasValue)
+            {
+                <a class="tool-btn" id="nextMsg" asp-action="Detail" asp-route-id="@Model.NextId" asp-route-box="@Model.Box" title="Sonraki mesaj (j)"><i class="bi bi-chevron-right"></i></a>
+            }
+            else
+            {
+                <button class="tool-btn" type="button" disabled><i class="bi bi-chevron-right"></i></button>
+            }
+        </div>
+    </div>
+
+    <div class="mp-grid">
+        <!-- Mesaj içeriği -->
+        <article class="mp-card">
+            <div class="pv-subject-row">
+                <h1 class="pv-subject">@(string.IsNullOrWhiteSpace(m.MessageSubject) ? "(Konu yok)" : m.MessageSubject)</h1>
+                @if (!Model.IsInTrash)
+                {
+                    <button class="star-btn @(Model.IsStarred ? "on" : "")" type="button" data-post="@Url.Action("ToggleStar")" data-starred="@(Model.IsStarred ? "false" : "true")" data-return="@hereUrl" title="@(Model.IsStarred ? "Yıldızı kaldır" : "Yıldızla")">
+                        <i class="bi @(Model.IsStarred ? "bi-star-fill" : "bi-star")"></i>
+                    </button>
+                }
+            </div>
+            <div class="mb-3 d-flex gap-2 flex-wrap">
+                @if (m.Category != null)
+                {
+                    <span class="tag" style="@UiHelpers.TagStyle(m.Category.CategoryColor)"><i class="bi bi-tag"></i> @m.Category.CategoryName</span>
+                }
+                <span class="tag" style="background:var(--bg);color:var(--muted)"><i class="bi @folderIcon"></i> @folderLabel</span>
+                @if (m.IsExternal)
+                {
+                    <span class="tag" style="@UiHelpers.TagStyle("#4A7CC2")"><i class="bi bi-globe2"></i> E-posta olarak gönderildi</span>
+                }
+            </div>
+
+            <div class="pv-sender">
+                @UiHelpers.Avatar(Model.SenderName, Model.SenderImage, m.SenderEmail, "lg")
+                <div class="who">
+                    <div class="nm">@Model.SenderName <span class="em">&lt;@m.SenderEmail&gt;</span></div>
+                    <div class="to"><b>Kime:</b> @Model.ReceiverName &lt;@m.ReceiverEmail&gt;</div>
+                </div>
+                <div class="dt"><b>@m.SendDate.ToString("d MMMM yyyy", UiHelpers.Tr)</b> @m.SendDate.ToString("dddd HH:mm", UiHelpers.Tr)</div>
+            </div>
+
+            <div class="pv-body">@Html.Raw(Model.SafeBody)</div>
+
+            <div class="pv-actions">
+                @if (!Model.IsInTrash)
+                {
+                    <a class="btn-soft primary" asp-action="CreateMessage" asp-route-replyTo="@m.MessageID" style="text-decoration:none"><i class="bi bi-reply-fill"></i> Yanıtla</a>
+                    <a class="btn-soft" asp-action="CreateMessage" asp-route-forwardId="@m.MessageID" style="text-decoration:none"><i class="bi bi-forward-fill"></i> İlet</a>
+                    <button class="btn-soft" type="button" data-post="@Url.Action("ToggleStar")" data-starred="@(Model.IsStarred ? "false" : "true")" data-return="@hereUrl">
+                        <i class="bi @(Model.IsStarred ? "bi-star-fill" : "bi-star")" style="@(Model.IsStarred ? "color:#F2B84B" : "")"></i> @(Model.IsStarred ? "Yıldızı Kaldır" : "Yıldızla")
+                    </button>
+                    <button class="btn-soft danger" type="button" data-post="@Url.Action("MoveToTrash")" data-return="@backUrl"><i class="bi bi-trash3"></i> Sil</button>
+                }
+                else
+                {
+                    <button class="btn-soft primary" type="button" data-post="@Url.Action("Restore")" data-return="@backUrl"><i class="bi bi-arrow-counterclockwise"></i> Geri Al</button>
+                    <button class="btn-soft danger" type="button" data-post="@Url.Action("DeleteForever")" data-return="@backUrl" data-confirm="Bu mesaj kalıcı olarak silinecek. Emin misiniz?"><i class="bi bi-x-octagon"></i> Kalıcı Olarak Sil</button>
+                }
+            </div>
+
+            @if (!Model.IsInTrash)
+            {
+                <form class="quick-reply" id="quickReply" method="post" asp-action="QuickReply" asp-route-id="@m.MessageID">
+                    @UiHelpers.Avatar(User.Identity?.Name, null, User.Identity?.Name, "sm")
+                    <input type="text" name="text" placeholder="@replyName kişisine hızlı yanıt yazın…" aria-label="Hızlı yanıt" maxlength="2000" autocomplete="off">
+                    <button type="submit" title="Gönder"><i class="bi bi-send-fill"></i></button>
+                </form>
+            }
+        </article>
+
+        <!-- Yan bilgi -->
+        <aside class="mp-side">
+            <div class="mp-side-card">
+                <h6>@(Model.IsOutgoing ? "Alıcı" : "Gönderen")</h6>
+                <div class="mp-contact">
+                    @UiHelpers.Avatar(contactName, Model.IsOutgoing ? null : Model.SenderImage, contactEmail, "lg")
+                    <div style="min-width:0">
+                        <div class="nm">@contactName</div>
+                        <div class="em">@contactEmail</div>
+                    </div>
+                </div>
+                <div class="mp-contact-actions">
+                    <a class="btn-soft" asp-action="CreateMessage" asp-route-to="@contactEmail" style="text-decoration:none"><i class="bi bi-send"></i> Mesaj Gönder</a>
+                    <button type="button" class="btn-soft" id="copyEmail" data-email="@contactEmail"><i class="bi bi-copy"></i> Kopyala</button>
+                </div>
+                <ul class="mp-facts">
+                    <li><span class="k"><i class="bi bi-tag"></i> Kategori</span><span class="v">@(m.Category?.CategoryName ?? "Yok")</span></li>
+                    <li><span class="k"><i class="bi bi-folder2"></i> Klasör</span><span class="v">@folderLabel</span></li>
+                    <li><span class="k"><i class="bi bi-star"></i> Durum</span><span class="v">@(Model.IsStarred ? "Yıldızlı" : "Normal")</span></li>
+                    <li><span class="k"><i class="bi bi-clock"></i> @(Model.IsOutgoing ? "Gönderildi" : "Alındı")</span><span class="v">@UiHelpers.LongDate(m.SendDate)</span></li>
+                </ul>
+            </div>
+
+            @if (Model.NextUp.Any())
+            {
+                <div class="mp-side-card">
+                    <h6>Sıradaki Mesajlar <span class="mp-counter" style="display:inline;padding:0">@(Model.Total - Model.Position) mesaj</span></h6>
+                    <div class="mp-next">
+                        @foreach (var n in Model.NextUp)
+                        {
+                            <a class="@(n.IsUnread ? "unread" : "")" href="@n.Url" style="text-decoration:none;color:inherit">
+                                @UiHelpers.Avatar(n.CounterpartName, n.CounterpartImage, n.CounterpartEmail, "sm")
+                                <span class="bd">
+                                    <span class="nm">@(n.CounterpartName)@if (n.IsUnread){<span class="unread-dot"></span>}</span>
+                                    <span class="sj d-block">@n.Subject</span>
+                                </span>
+                                <span class="tm">@UiHelpers.ShortTime(n.Date)</span>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+        </aside>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const { $, $$, showToast } = window.Mailora;
+            const form = $('#actForm');
+
+            // data-post="url" olan butonlar ortak formu ilgili action'a gönderir
+            $$('[data-post]').forEach(b => b.addEventListener('click', () => {
+                if (b.dataset.confirm && !window.confirm(b.dataset.confirm)) return;
+                form.action = b.dataset.post;
+                $('#actStarred').value = b.dataset.starred || '';
+                $('#actReturn').value = b.dataset.return || '';
+                form.submit();
+            }));
+
+            $('#copyEmail')?.addEventListener('click', e => {
+                const email = e.currentTarget.dataset.email;
+                const done = () => showToast(`${email} kopyalandı.`, 'bi-clipboard-check');
+                if (navigator.clipboard) navigator.clipboard.writeText(email).then(done, () => showToast(`Adres: ${email}`, 'bi-envelope'));
+                else showToast(`Adres: ${email}`, 'bi-envelope');
+            });
+
+            $('#quickReply')?.addEventListener('submit', e => {
+                const inp = $('input[name="text"]', e.target);
+                if (!inp.value.trim()) { e.preventDefault(); inp.focus(); }
+            });
+
+            // Klavye: j sonraki, k önceki
+            document.addEventListener('keydown', e => {
+                if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+                if (e.key === 'j') $('#nextMsg')?.click();
+                if (e.key === 'k') $('#prevMsg')?.click();
+            });
+        })();
+    </script>
+}

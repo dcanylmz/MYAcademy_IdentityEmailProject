@@ -1,0 +1,22 @@
+@{
+    var errors = ViewData.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
+}
+@if (errors.Any())
+{
+    <div class="server-alert" role="alert">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        @if (errors.Count == 1)
+        {
+            <span>@errors[0]</span>
+        }
+        else
+        {
+            <ul>
+                @foreach (var e in errors)
+                {
+                    <li>@e</li>
+                }
+            </ul>
+        }
+    </div>
+}

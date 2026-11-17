@@ -1,7 +1,6 @@
-﻿<!-- =====================================================================
-        SHARED NAVBAR
-        ASP.NET Core MVC: Views/Shared/_Navbar.cshtml (partial) — _Layout.cshtml içinde
-        Kullanıcı adı ileride User.Identity.Name ile doldurulacak.
+@model HeaderViewModel
+<!-- =====================================================================
+        SHARED NAVBAR — oturum açan kullanıcının bilgileri Identity'den gelir
         ===================================================================== -->
 <header class="app-navbar">
     <button class="nav-toggle" id="sidebarToggle" type="button" aria-label="Menüyü daralt / genişlet" title="Menüyü daralt"><i class="bi bi-list"></i></button>
@@ -13,46 +12,68 @@
     </div>
 
     <div class="nav-actions">
-        <button class="icon-btn hide-xs" type="button" title="Yardım"><i class="bi bi-question-circle"></i></button>
+        <a class="icon-btn hide-xs" asp-controller="Message" asp-action="CreateMessage" title="Yeni Mesaj" style="text-decoration:none"><i class="bi bi-pencil-square"></i></a>
 
         <div class="dropdown">
             <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Bildirimler">
-                <i class="bi bi-bell"></i><span class="pip"></span>
+                <i class="bi bi-bell"></i>@if (Model.UnreadCount > 0){<span class="pip"></span>}
             </button>
             <div class="dropdown-menu dropdown-menu-end notif-menu">
                 <div class="d-flex justify-content-between align-items-center px-2 pt-1 pb-2">
                     <strong style="font-size:14px">Bildirimler</strong>
-                    <span class="tag tag-is">3 yeni</span>
+                    @if (Model.UnreadCount > 0)
+                    {
+                        <span class="tag tag-is">@Model.UnreadCount yeni</span>
+                    }
                 </div>
-                <div class="notif-item"><div class="ni av-lav"><i class="bi bi-envelope"></i></div><div><div class="nt">Ayşe Demir size mesaj gönderdi</div><div class="nd">5 dakika önce</div></div></div>
-                <div class="notif-item"><div class="ni av-mint"><i class="bi bi-calendar-check"></i></div><div><div class="nt">Sprint toplantısı 14:00'te başlıyor</div><div class="nd">30 dakika önce</div></div></div>
-                <div class="notif-item"><div class="ni av-blue"><i class="bi bi-shield-check"></i></div><div><div class="nt">Yeni cihazdan giriş yapıldı</div><div class="nd">Dün, 22:14</div></div></div>
+                @if (Model.Notifications.Any())
+                {
+                    foreach (var n in Model.Notifications)
+                    {
+                        <a class="notif-item" href="@n.Url">
+                            @UiHelpers.Avatar(n.CounterpartName, n.CounterpartImage, n.CounterpartEmail, "sm")
+                            <div style="min-width:0">
+                                <div class="nt">@n.CounterpartName size mesaj gönderdi</div>
+                                <div class="nd">@n.Subject · @UiHelpers.ShortTime(n.Date)</div>
+                            </div>
+                        </a>
+                    }
+                    <div class="px-2 pt-2"><a asp-controller="Message" asp-action="Inbox" asp-route-filter="unread" style="font-size:13px;font-weight:700;color:var(--accent-dark);text-decoration:none">Tüm okunmamışları gör <i class="bi bi-arrow-right"></i></a></div>
+                }
+                else
+                {
+                    <div class="notif-empty"><i class="bi bi-check2-circle"></i> Okunmamış mesajınız yok</div>
+                }
             </div>
         </div>
 
         <div class="dropdown">
             <button class="user-chip" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <span class="avatar sm av-user" data-user="avatar">AY</span>
+                @UiHelpers.Avatar(Model.FullName, Model.ImageUrl, Model.Email, "sm", "av-user")
                 <span class="meta">
-                    <span class="name d-block" data-user="fullName">Ahmet Yılmaz</span>
-                    <span class="role d-block">Premium Hesap</span>
+                    <span class="name d-block">@Model.FullName</span>
+                    <span class="role d-block">@@@Model.UserName</span>
                 </span>
                 <i class="bi bi-chevron-down"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
                 <li class="dd-head">
-                    <span class="avatar av-user" data-user="avatar">AY</span>
+                    @UiHelpers.Avatar(Model.FullName, Model.ImageUrl, Model.Email, "", "av-user")
                     <div style="min-width:0">
-                        <div style="font-weight:700" data-user="fullName">Ahmet Yılmaz</div>
-                        <div style="font-size:12.5px;color:var(--muted)" data-user="email">ahmet.yilmaz@@mailora.com</div>
+                        <div style="font-weight:700">@Model.FullName</div>
+                        <div style="font-size:12.5px;color:var(--muted)">@Model.Email</div>
                     </div>
                 </li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" data-page="profile" href="#profile"><i class="bi bi-person"></i> Profilim</a></li>
-                <li><a class="dropdown-item" data-page="settings" href="#settings"><i class="bi bi-gear"></i> Ayarlar</a></li>
-                <li><a class="dropdown-item" href="#" onclick="Mailora.showToast('Tema seçenekleri yakında eklenecek.','bi-palette');return false;"><i class="bi bi-moon-stars"></i> Görünüm</a></li>
+                <li><a class="dropdown-item" asp-controller="Profile" asp-action="Index"><i class="bi bi-person"></i> Profilim</a></li>
+                <li><a class="dropdown-item" asp-controller="Profile" asp-action="Index" asp-fragment="security"><i class="bi bi-shield-lock"></i> Şifre Değiştir</a></li>
+                <li><a class="dropdown-item" asp-controller="Dashboard" asp-action="Index"><i class="bi bi-grid-1x2"></i> Dashboard</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item danger" href="#" onclick="Mailora.showToast('Çıkış işlemi Identity entegrasyonuyla eklenecek.','bi-box-arrow-right');return false;"><i class="bi bi-box-arrow-right"></i> Çıkış Yap</a></li>
+                <li>
+                    <form method="post" asp-controller="Login" asp-action="Logout" class="m-0">
+                        <button type="submit" class="dropdown-item danger"><i class="bi bi-box-arrow-right"></i> Çıkış Yap</button>
+                    </form>
+                </li>
             </ul>
         </div>
     </div>

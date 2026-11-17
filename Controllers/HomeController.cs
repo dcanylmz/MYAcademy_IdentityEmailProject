@@ -1,25 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using MYAcademy_IdentityEmailProject.Models;
-using System.Diagnostics;
 
 namespace MYAcademy_IdentityEmailProject.Controllers
 {
+    // Varsayılan rota artık Dashboard. Eski /Home adresleri oraya yönlendirilir.
     public class HomeController : Controller
     {
-        public IActionResult Index()
-        {
-            return View();
-        }
-
-        public IActionResult Privacy()
-        {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
+        public IActionResult Index() => RedirectToAction("Index", "Dashboard");
     }
 }

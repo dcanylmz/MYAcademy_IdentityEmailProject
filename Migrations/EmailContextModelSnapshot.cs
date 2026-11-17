@@ -110,9 +110,17 @@ namespace MYAcademy_IdentityEmailProject.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CategoryID"));
 
+                    b.Property<string>("CategoryColor")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("#8B7FD6");
+
                     b.Property<string>("CategoryName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("CategoryID");
 
@@ -127,13 +135,37 @@ namespace MYAcademy_IdentityEmailProject.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MessageID"));
 
-                    b.Property<int>("CategoryID")
+                    b.Property<int?>("CategoryID")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsDeletedByReceiver")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeletedBySender")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsExternal")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsFavourite")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsPermanentlyDeletedByReceiver")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPermanentlyDeletedBySender")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsStarredByReceiver")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsStarredBySender")
                         .HasColumnType("bit");
 
                     b.Property<string>("MessageDetail")
@@ -142,22 +174,32 @@ namespace MYAcademy_IdentityEmailProject.Migrations
 
                     b.Property<string>("MessageSubject")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("ParentMessageID")
+                        .HasColumnType("int");
 
                     b.Property<string>("ReceiverEmail")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("SendDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("SenderEmail")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.HasKey("MessageID");
 
                     b.HasIndex("CategoryID");
+
+                    b.HasIndex("ReceiverEmail");
+
+                    b.HasIndex("SenderEmail");
 
                     b.ToTable("Messages");
                 });
@@ -300,8 +342,7 @@ namespace MYAcademy_IdentityEmailProject.Migrations
                     b.HasOne("MYAcademy_IdentityEmailProject.Entities.Category", "Category")
                         .WithMany("Messages")
                         .HasForeignKey("CategoryID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Category");
                 });

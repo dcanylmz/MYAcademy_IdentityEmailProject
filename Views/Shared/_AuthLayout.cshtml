@@ -1,0 +1,85 @@
+@*
+    Giriş, email doğrulama ve şifre işlemleri için ortak düzen.
+    Kayıt sayfasının tema bileşenlerini (stil + marka paneli) kullanır.
+*@
+<!DOCTYPE html>
+<html lang="tr">
+@await Component.InvokeAsync("_RegisterStyleComponentPartial")
+<style>
+    .auth-form-wrap .form-head { margin-bottom: 22px; }
+    .server-alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; margin-bottom: 18px;
+                    background: var(--rose); color: var(--danger); font-size: 13.5px; font-weight: 600; line-height: 1.5; }
+    .server-alert.ok { background: var(--mint); color: var(--success); }
+    .server-alert.info { background: var(--lavender); color: var(--accent-dark); }
+    .server-alert i { font-size: 17px; line-height: 1.3; }
+    .server-alert ul { margin: 0; padding-left: 16px; }
+    .row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 4px 0 6px; font-size: 13.5px; }
+    .row-between a { color: var(--accent-dark); font-weight: 700; text-decoration: none; }
+    .row-between label { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; }
+    .code-inputs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 6px 0 4px; }
+    .code-inputs input { width: 100%; aspect-ratio: 1 / 1.15; text-align: center; font-size: 24px; font-weight: 800; color: var(--text);
+                         border: 1.5px solid var(--border); border-radius: 14px; background: #fff; outline: 0; transition: .2s var(--ease); }
+    .code-inputs input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(139, 127, 214, .15); }
+    .linkbtn { background: none; border: 0; padding: 0; color: var(--accent-dark); font-weight: 700; cursor: pointer; font: inherit; }
+    .center-ic { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; font-size: 28px; margin-bottom: 18px;
+                 background: var(--lavender); color: var(--accent-dark); }
+    .center-ic.warn { background: var(--peach); color: #C8774A; }
+    .center-ic.ok { background: var(--mint); color: var(--success); }
+</style>
+<body>
+    <div class="auth-bg" aria-hidden="true"><span class="g1"></span><span class="g2"></span><span class="g3"></span></div>
+
+    <main class="auth-page">
+        <div class="auth-card">
+            @await Component.InvokeAsync("_RegisterBrandComponentPartial")
+            <section class="auth-form-wrap">
+                @RenderBody()
+            </section>
+        </div>
+    </main>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <script>
+        const $ = (s, r = document) => r.querySelector(s);
+        const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+        document.title = @Json.Serialize((ViewData["Title"]?.ToString() ?? "Mailora") + " · Mailora");
+
+        function toast(title, text = '', type = 'info', icon = 'bi-info-circle') {
+            const el = document.createElement('div');
+            el.className = `m-toast ${type}`;
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            el.innerHTML = `<span class="ti"><i class="bi ${icon}"></i></span><span><b>${esc(title)}</b>${esc(text)}</span>`;
+            $('#toastStack').appendChild(el);
+            setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 4200);
+        }
+
+        // Şifre göster / gizle + Caps Lock uyarısı
+        $$('[data-eye]').forEach(btn => btn.addEventListener('click', () => {
+            const input = $('#' + btn.dataset.eye), show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            $('i', btn).className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+            input.focus({ preventScroll: true });
+        }));
+        $$('input[type="password"]').forEach(el => {
+            const caps = el.closest('.field')?.querySelector('.caps');
+            if (!caps) return;
+            el.addEventListener('keyup', e => caps.classList.toggle('show', !!(e.getModifierState && e.getModifierState('CapsLock'))));
+            el.addEventListener('blur', () => caps.classList.remove('show'));
+        });
+
+        // Gönderim sırasında butonu kilitle
+        $$('form[data-loading]').forEach(f => f.addEventListener('submit', () => {
+            const b = $('button[type="submit"]', f);
+            if (!b) return;
+            setTimeout(() => { b.disabled = true; b.innerHTML = `<span class="spinner-sm"></span><span class="lbl">${f.dataset.loading}</span>`; }, 0);
+        }));
+
+        // Controller'dan gelen bilgi mesajı (TempData["Toast"])
+        const serverToast = @Json.Serialize(TempData["Toast"]?.ToString());
+        if (serverToast) toast('Bilgi', ' ' + serverToast, 'success', 'bi-check2-circle');
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
